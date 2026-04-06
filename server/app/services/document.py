@@ -9,9 +9,10 @@ from app.schemas.document import CreateDocument, UpdateDocument, HistoryResponse
 
 from app.core.db import db
 
+import logging
+logger = logging.getLogger(__name__)
+
 collection = db["documents"]
-
-
 class DocumentNotFoundError(Exception):
     pass
 
@@ -67,6 +68,7 @@ class DocumentService:
             }
         )
         if existing_document:
+            logger.warning("Document title already exists")
             raise DocumentDuplicateTitleError("Document title already exists")
 
         document_id = str(ObjectId())
@@ -92,6 +94,7 @@ class DocumentService:
                 **document.dict(exclude={"id"}),
             }
         )
+        logger.info("Document %s created by user %s", document_id, user_id)
         return document
 
     def list_documents_by_user(self, user_id: str):
@@ -119,6 +122,7 @@ class DocumentService:
 
         active_version = self._get_active_version(document)
         if active_version["content"] == update_data.content:
+            logger.warning("Document content is unchanged. No new version created.")
             raise DocumentNoChangeError("Warning: content is unchanged. New version was not created")
         
         current_version = document["current_version"] + 1
@@ -135,6 +139,7 @@ class DocumentService:
                 "$set": {"current_version": current_version, "updated_at": datetime.utcnow()}
             }
         )
+        logger.info("Document %s updated to version %s by user %s", document_id, current_version, user_id)
         document["current_version"] = current_version
         document["updated_at"] = datetime.utcnow()
         return self._normalize_document(document)
@@ -170,11 +175,13 @@ class DocumentService:
         object_id = self._to_object_id(document_id)
         document = self.db.documents.find_one({"_id": object_id})
         if not document:
+            logger.warning("Document with id %s not found for rollback", document_id)
             raise DocumentNotFoundError("Document not found")
         self._ensure_owner(document, user_id)
         # find the version in document versions with version number
         version = next((v for v in document["versions"] if v["version_number"] == version_number), None)
         if not version:
+            logger.warning("Version number %s not found for document %s", version_number, document_id)
             raise DocumentVersionNotFoundError("Version not found")
         
         self.db.documents.update_one(
@@ -183,6 +190,7 @@ class DocumentService:
                 "$set": {"current_version": version_number, "updated_at": datetime.utcnow()}
             }
         )
+        logger.info("Document %s rolled back to version %s by user %s", document_id, version_number, user_id)
         document["current_version"] = version_number
         document["updated_at"] = datetime.utcnow()
         return self._normalize_document(document)

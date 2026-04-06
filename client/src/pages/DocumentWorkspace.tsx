@@ -9,7 +9,6 @@ import {
   Loader2,
   List,
   ListOrdered,
-  Quote,
   RotateCcw,
   Save,
   Strikethrough,
@@ -228,10 +227,10 @@ export default function DocumentWorkspace() {
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
         <header className="mb-6 rounded-xl border border-slate-300 bg-white p-5">
           <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
-            Document editor
+            Document Version History
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            Pick a document on the left. Edit and save in the center. History
+            Pick a document on the left. Edit and save. History
             appears below.
           </p>
         </header>
