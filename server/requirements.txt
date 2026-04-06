@@ -2,5 +2,8 @@ fastapi
 pydantic
 uvicorn
 pymongo
-python-jose
+python-jose==3.3.0
 pydantic_settings
+passlib==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.9

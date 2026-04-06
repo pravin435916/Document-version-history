@@ -1,5 +1,6 @@
 # write main.py
 from fastapi import FastAPI
+from app.routes.auth_route import router as auth_router
 from app.routes.document_route import router as document_router
 app = FastAPI(title="Document Version History API")
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,3 +21,4 @@ CORSMiddleware,
     allow_headers=["*"],
 )
 app.include_router(document_router)
+app.include_router(auth_router)

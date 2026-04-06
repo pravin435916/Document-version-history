@@ -6,13 +6,11 @@ from bson.errors import InvalidId
 
 from app.models.document import Document, Version
 from app.schemas.document import CreateDocument, UpdateDocument, HistoryResponse, DocumentListResponse
-
-from app.core.db import db
+from app.repositories.document_repository import DocumentRepository
 
 import logging
 logger = logging.getLogger(__name__)
 
-collection = db["documents"]
 class DocumentNotFoundError(Exception):
     pass
 
@@ -34,8 +32,8 @@ class DocumentInvalidIdError(Exception):
 
 
 class DocumentService:
-    def __init__(self, db):
-        self.db = db
+    def __init__(self, repository: DocumentRepository):
+        self.repository = repository
 
     def _to_object_id(self, document_id: str) -> ObjectId:
         try:
@@ -59,13 +57,8 @@ class DocumentService:
 
     def create_document(self, document_data: CreateDocument, user_id: str) -> Document:
         normalized_title = document_data.title.strip()
-        existing_document = self.db.documents.find_one(
-            { 
-                "title": {
-                    "$regex": f"^{re.escape(normalized_title)}$",
-                    "$options": "i",
-                }
-            }
+        existing_document = self.repository.find_one_by_title_case_insensitive(
+            f"^{re.escape(normalized_title)}$"
         )
         if existing_document:
             logger.warning("Document title already exists")
@@ -87,7 +80,7 @@ class DocumentService:
             updated_at=datetime.utcnow(),
             created_by=user_id
         )
-        self.db.documents.insert_one(
+        self.repository.insert_one(
             {
                 "_id": ObjectId(document_id),
                 "created_by": user_id,
@@ -98,7 +91,7 @@ class DocumentService:
         return document
 
     def list_documents_by_user(self, user_id: str):
-        documents = self.db.documents.find({"created_by": user_id}).sort("updated_at", -1)
+        documents = self.repository.find_by_owner(user_id)
         result = []
         for document in documents:
             active_version = self._get_active_version(document)
@@ -115,7 +108,7 @@ class DocumentService:
     
     def update_document(self, document_id: str, update_data: UpdateDocument, user_id: str) -> Document:
         object_id = self._to_object_id(document_id)
-        document = self.db.documents.find_one({"_id": object_id})
+        document = self.repository.find_by_id(object_id)
         if not document:
             raise DocumentNotFoundError("Document not found")
         self._ensure_owner(document, user_id) 
@@ -132,21 +125,21 @@ class DocumentService:
             created_at=datetime.utcnow(),
             edited_by=user_id
         )
-        self.db.documents.update_one(
-            {"_id": object_id},
-            {
-                "$push": {"versions": version.dict()},
-                "$set": {"current_version": current_version, "updated_at": datetime.utcnow()}
-            }
+        updated_at = datetime.utcnow()
+        self.repository.push_version_and_set_current(
+            object_id,
+            version.dict(),
+            current_version,
+            updated_at,
         )
         logger.info("Document %s updated to version %s by user %s", document_id, current_version, user_id)
         document["current_version"] = current_version
-        document["updated_at"] = datetime.utcnow()
+        document["updated_at"] = updated_at
         return self._normalize_document(document)
     
     def get_document(self, document_id: str, user_id: str) -> Document:
         object_id = self._to_object_id(document_id)
-        document = self.db.documents.find_one({"_id": object_id})
+        document = self.repository.find_by_id(object_id)
         if not document:
             raise DocumentNotFoundError("Document not found")
         self._ensure_owner(document, user_id)
@@ -154,7 +147,7 @@ class DocumentService:
     
     def get_document_history(self, document_id: str, user_id: str):
         object_id = self._to_object_id(document_id)
-        document = self.db.documents.find_one({"_id": object_id})
+        document = self.repository.find_by_id(object_id)
         if not document:
             raise DocumentNotFoundError("Document not found")
         self._ensure_owner(document, user_id)
@@ -173,7 +166,7 @@ class DocumentService:
     # dont create any new version just switch to that version and make it current version
     def rollback_document(self, document_id: str, version_number: int, user_id: str) -> Document:
         object_id = self._to_object_id(document_id)
-        document = self.db.documents.find_one({"_id": object_id})
+        document = self.repository.find_by_id(object_id)
         if not document:
             logger.warning("Document with id %s not found for rollback", document_id)
             raise DocumentNotFoundError("Document not found")
@@ -184,13 +177,9 @@ class DocumentService:
             logger.warning("Version number %s not found for document %s", version_number, document_id)
             raise DocumentVersionNotFoundError("Version not found")
         
-        self.db.documents.update_one(
-            {"_id": object_id},
-            {
-                "$set": {"current_version": version_number, "updated_at": datetime.utcnow()}
-            }
-        )
+        updated_at = datetime.utcnow()
+        self.repository.set_current_version(object_id, version_number, updated_at)
         logger.info("Document %s rolled back to version %s by user %s", document_id, version_number, user_id)
         document["current_version"] = version_number
-        document["updated_at"] = datetime.utcnow()
+        document["updated_at"] = updated_at
         return self._normalize_document(document)

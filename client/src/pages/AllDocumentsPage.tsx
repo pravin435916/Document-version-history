@@ -5,6 +5,7 @@ import toast from "react-hot-toast"
 
 import type { DocumentListItem } from "../api/types"
 import { documentApi } from "../api"
+import { clearAccessToken } from "../auth/token"
 import { formatDate, htmlToText } from "../utils/document"
 import { EmptyState } from "../ui/EmptyState"
 
@@ -29,6 +30,12 @@ export default function AllDocumentsPage() {
     void fetchDocuments()
   }, [])
 
+  const handleLogout = () => {
+    clearAccessToken()
+    toast.success("Logged out")
+    navigate("/login", { replace: true })
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-5xl">
@@ -45,6 +52,13 @@ export default function AllDocumentsPage() {
               >
                 Open workspace
               </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Logout
+              </button>
               <button
                 type="button"
                 onClick={fetchDocuments}

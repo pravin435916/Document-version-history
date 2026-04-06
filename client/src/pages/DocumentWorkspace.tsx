@@ -3,12 +3,13 @@ import { EditorContent, useEditor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import UnderlineExtension from "@tiptap/extension-underline"
 import { FilePlus2, History, Save } from "lucide-react"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import toast from "react-hot-toast"
 
 import { documentApi } from "../api"
 import type { DocumentListItem, DocumentResponse, HistoryResponse } from "../api/types"
 import { getApiErrorMessage } from "../utils/document"
+import { clearAccessToken } from "../auth/token"
 import { Panel } from "../ui/Panel"
 import { Field } from "../ui/Field"
 import { Badge } from "../ui/Badge"
@@ -35,6 +36,7 @@ const toCurrentDocument = (document: DocumentResponse | DocumentListItem): Curre
 
 export default function DocumentWorkspace() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [title, setTitle] = useState("Project Notes")
   const [currentDocument, setCurrentDocument] = useState<CurrentDocument | null>(null)
   const [documents, setDocuments] = useState<DocumentListItem[]>([])
@@ -201,6 +203,12 @@ export default function DocumentWorkspace() {
     }
   }
 
+  const handleLogout = () => {
+    clearAccessToken()
+    toast.success("Logged out")
+    navigate("/login", { replace: true })
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
@@ -210,12 +218,21 @@ export default function DocumentWorkspace() {
               <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">Document Version History</h1>
               <p className="mt-2 text-sm text-slate-600">Pick a document on the left. Edit and save. History appears below.</p>
             </div>
-            <Link
-              to="/documents"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              View all documents
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                to="/documents"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                View all documents
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </header>
 

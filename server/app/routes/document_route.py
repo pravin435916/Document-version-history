@@ -1,9 +1,11 @@
 # create router for document
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Header, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.db import db
+from app.dependencies.auth import get_current_user
+from app.repositories.document_repository import DocumentRepository
 from app.schemas.document import CreateDocument, UpdateDocument, DocumentResponse, HistoryResponse, DocumentListResponse
 from app.services.document import (
     DocumentService,
@@ -32,26 +34,26 @@ def _document_response(document) -> DocumentResponse:
 
 
 @router.post("/", response_model=DocumentResponse)
-def create_document(document_data: CreateDocument, user_id: str = Header(...)):
-    service = DocumentService(db)
+def create_document(document_data: CreateDocument, current_user: dict = Depends(get_current_user)):
+    service = DocumentService(DocumentRepository(db))
     try:
-        document = service.create_document(document_data, user_id)
+        document = service.create_document(document_data, str(current_user["_id"]))
         return _document_response(document)
     except DocumentDuplicateTitleError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("/", response_model=List[DocumentListResponse])
-def list_documents(user_id: str = Header(...)):
-    service = DocumentService(db)
-    return service.list_documents_by_user(user_id)
+def list_documents(current_user: dict = Depends(get_current_user)):
+    service = DocumentService(DocumentRepository(db))
+    return service.list_documents_by_user(str(current_user["_id"]))
 
 
 @router.put("/{document_id}", response_model=DocumentResponse)
-def update_document(document_id: str, update_data: UpdateDocument, user_id: str = Header(...)):
-    service = DocumentService(db)
+def update_document(document_id: str, update_data: UpdateDocument, current_user: dict = Depends(get_current_user)):
+    service = DocumentService(DocumentRepository(db))
     try:
-        document = service.update_document(document_id, update_data, user_id)
+        document = service.update_document(document_id, update_data, str(current_user["_id"]))
         return _document_response(document)
     except (DocumentNotFoundError, DocumentVersionNotFoundError) as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -62,10 +64,10 @@ def update_document(document_id: str, update_data: UpdateDocument, user_id: str 
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
-def get_document(document_id: str, user_id: str = Header(...)):
-    service = DocumentService(db)
+def get_document(document_id: str, current_user: dict = Depends(get_current_user)):
+    service = DocumentService(DocumentRepository(db))
     try:
-        document = service.get_document(document_id, user_id)
+        document = service.get_document(document_id, str(current_user["_id"]))
         return _document_response(document)
     except DocumentNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -74,10 +76,10 @@ def get_document(document_id: str, user_id: str = Header(...)):
 
 
 @router.get("/{document_id}/history", response_model=List[HistoryResponse])
-def get_document_history(document_id: str, user_id: str = Header(...)):
-    service = DocumentService(db)
+def get_document_history(document_id: str, current_user: dict = Depends(get_current_user)):
+    service = DocumentService(DocumentRepository(db))
     try:
-        return service.get_document_history(document_id, user_id)
+        return service.get_document_history(document_id, str(current_user["_id"]))
     except DocumentNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except DocumentInvalidIdError as e:
@@ -88,11 +90,11 @@ def get_document_history(document_id: str, user_id: str = Header(...)):
 def rollback_document(
     document_id: str,
     version_number: int = Query(..., ge=1),
-    user_id: str = Header(...),
+    current_user: dict = Depends(get_current_user),
 ):
-    service = DocumentService(db)
+    service = DocumentService(DocumentRepository(db))
     try:
-        document = service.rollback_document(document_id, version_number, user_id)
+        document = service.rollback_document(document_id, version_number, str(current_user["_id"]))
         return _document_response(document)
     except (DocumentNotFoundError, DocumentVersionNotFoundError) as e:
         raise HTTPException(status_code=404, detail=str(e))
