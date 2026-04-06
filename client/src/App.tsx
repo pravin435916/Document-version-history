@@ -1,5 +1,8 @@
-import DocumentWorkspace from './pages/DocumentWorkspace'
-import { Toaster } from 'react-hot-toast'
+import { Navigate, Route, Routes } from "react-router-dom"
+import { Toaster } from "react-hot-toast"
+
+import DocumentWorkspace from "./pages/DocumentWorkspace"
+import AllDocumentsPage from "./pages/AllDocumentsPage"
 
 const App = () => {
   return (
@@ -13,7 +16,11 @@ const App = () => {
           },
         }}
       />
-      <DocumentWorkspace />
+      <Routes>
+        <Route path="/" element={<Navigate to="/workspace" replace />} />
+        <Route path="/workspace" element={<DocumentWorkspace />} />
+        <Route path="/documents" element={<AllDocumentsPage />} />
+      </Routes>
     </>
   )
 }
