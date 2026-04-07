@@ -1,10 +1,7 @@
-# connect db 
-from pymongo import MongoClient
+# connect db
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+
 from app.core.config import settings
 
-client = MongoClient(settings.MONGO_URI)
-db = client[settings.DB_NAME]
-
-# Connection pool -> explore and how it works
-
-# Repository layer -> DRY , solid principles
+client = AsyncIOMotorClient(settings.MONGO_URI)
+db: AsyncIOMotorDatabase = client[settings.DB_NAME]

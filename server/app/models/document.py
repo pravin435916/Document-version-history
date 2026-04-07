@@ -11,7 +11,7 @@ class Version(BaseModel):
 
 class Document(BaseModel):
     id: Optional[str] = Field(None, alias="_id")  
-    title: str = Field(..., max_length=100)
+    title: str = Field(..., max_length=100) 
     current_version: int
     versions: List[Version]
     created_at: datetime

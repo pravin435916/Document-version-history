@@ -9,7 +9,7 @@ from app.services.auth import AuthService
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     payload = decode_access_token(token)
     if not payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -19,7 +19,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     auth_service = AuthService(UserRepository(db))
-    user = auth_service.get_user_by_id(user_id)
+    user = await auth_service.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 

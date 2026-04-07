@@ -18,7 +18,7 @@ export default function RegisterPage() {
       setLoading(true)
       await authApi.register({ username, password })
       toast.success("Registration successful. Please login.")
-      navigate("/login", { replace: true })
+      navigate("/login", { replace: true }) // replace to prevent going back to register page
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Registration failed"))
     } finally {

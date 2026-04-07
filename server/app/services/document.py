@@ -55,9 +55,9 @@ class DocumentService:
             document["versions"][-1], # -1 is the latest version in case current_version is not found
         )
 
-    def create_document(self, document_data: CreateDocument, user_id: str) -> Document:
+    async def create_document(self, document_data: CreateDocument, user_id: str) -> Document:
         normalized_title = document_data.title.strip()
-        existing_document = self.repository.find_one_by_title_case_insensitive(
+        existing_document = await self.repository.find_one_by_title_case_insensitive(
             f"^{re.escape(normalized_title)}$"
         )
         if existing_document:
@@ -80,7 +80,7 @@ class DocumentService:
             updated_at=datetime.utcnow(),
             created_by=user_id
         )
-        self.repository.insert_one(
+        await self.repository.insert_one(
             {
                 "_id": ObjectId(document_id),
                 "created_by": user_id,
@@ -90,8 +90,8 @@ class DocumentService:
         logger.info("Document %s created by user %s", document_id, user_id)
         return document
 
-    def list_documents_by_user(self, user_id: str):
-        documents = self.repository.find_by_owner(user_id)
+    async def list_documents_by_user(self, user_id: str):
+        documents = await self.repository.find_by_owner(user_id)
         result = []
         for document in documents:
             active_version = self._get_active_version(document)
@@ -106,9 +106,9 @@ class DocumentService:
             )
         return result
     
-    def update_document(self, document_id: str, update_data: UpdateDocument, user_id: str) -> Document:
+    async def update_document(self, document_id: str, update_data: UpdateDocument, user_id: str) -> Document:
         object_id = self._to_object_id(document_id)
-        document = self.repository.find_by_id(object_id)
+        document = await self.repository.find_by_id(object_id)
         if not document:
             raise DocumentNotFoundError("Document not found")
         self._ensure_owner(document, user_id) 
@@ -126,7 +126,7 @@ class DocumentService:
             edited_by=user_id
         )
         updated_at = datetime.utcnow()
-        self.repository.push_version_and_set_current(
+        await self.repository.push_version_and_set_current(
             object_id,
             version.dict(),
             current_version,
@@ -137,17 +137,17 @@ class DocumentService:
         document["updated_at"] = updated_at
         return self._normalize_document(document)
     
-    def get_document(self, document_id: str, user_id: str) -> Document:
+    async def get_document(self, document_id: str, user_id: str) -> Document:
         object_id = self._to_object_id(document_id)
-        document = self.repository.find_by_id(object_id)
+        document = await self.repository.find_by_id(object_id)
         if not document:
             raise DocumentNotFoundError("Document not found")
         self._ensure_owner(document, user_id)
         return self._normalize_document(document)
     
-    def get_document_history(self, document_id: str, user_id: str):
+    async def get_document_history(self, document_id: str, user_id: str):
         object_id = self._to_object_id(document_id)
-        document = self.repository.find_by_id(object_id)
+        document = await self.repository.find_by_id(object_id)
         if not document:
             raise DocumentNotFoundError("Document not found")
         self._ensure_owner(document, user_id)
@@ -164,9 +164,9 @@ class DocumentService:
     # user id docid , ? query param for version number
     # switch to that version and make it current version
     # dont create any new version just switch to that version and make it current version
-    def rollback_document(self, document_id: str, version_number: int, user_id: str) -> Document:
+    async def rollback_document(self, document_id: str, version_number: int, user_id: str) -> Document:
         object_id = self._to_object_id(document_id)
-        document = self.repository.find_by_id(object_id)
+        document = await self.repository.find_by_id(object_id)
         if not document:
             logger.warning("Document with id %s not found for rollback", document_id)
             raise DocumentNotFoundError("Document not found")
@@ -178,7 +178,7 @@ class DocumentService:
             raise DocumentVersionNotFoundError("Version not found")
         
         updated_at = datetime.utcnow()
-        self.repository.set_current_version(object_id, version_number, updated_at)
+        await self.repository.set_current_version(object_id, version_number, updated_at)
         logger.info("Document %s rolled back to version %s by user %s", document_id, version_number, user_id)
         document["current_version"] = version_number
         document["updated_at"] = updated_at

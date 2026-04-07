@@ -1,7 +1,7 @@
 fastapi
 pydantic
 uvicorn
-pymongo
+motor
 python-jose==3.3.0
 pydantic_settings
 passlib==1.7.4

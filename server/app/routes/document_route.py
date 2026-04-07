@@ -34,26 +34,26 @@ def _document_response(document) -> DocumentResponse:
 
 
 @router.post("/", response_model=DocumentResponse)
-def create_document(document_data: CreateDocument, current_user: dict = Depends(get_current_user)):
+async def create_document(document_data: CreateDocument, current_user: dict = Depends(get_current_user)):
     service = DocumentService(DocumentRepository(db))
     try:
-        document = service.create_document(document_data, str(current_user["_id"]))
+        document = await service.create_document(document_data, str(current_user["_id"]))
         return _document_response(document)
     except DocumentDuplicateTitleError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("/", response_model=List[DocumentListResponse])
-def list_documents(current_user: dict = Depends(get_current_user)):
+async def list_documents(current_user: dict = Depends(get_current_user)):
     service = DocumentService(DocumentRepository(db))
-    return service.list_documents_by_user(str(current_user["_id"]))
+    return await service.list_documents_by_user(str(current_user["_id"]))
 
 
 @router.put("/{document_id}", response_model=DocumentResponse)
-def update_document(document_id: str, update_data: UpdateDocument, current_user: dict = Depends(get_current_user)):
+async def update_document(document_id: str, update_data: UpdateDocument, current_user: dict = Depends(get_current_user)):
     service = DocumentService(DocumentRepository(db))
     try:
-        document = service.update_document(document_id, update_data, str(current_user["_id"]))
+        document = await service.update_document(document_id, update_data, str(current_user["_id"]))
         return _document_response(document)
     except (DocumentNotFoundError, DocumentVersionNotFoundError) as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -64,10 +64,10 @@ def update_document(document_id: str, update_data: UpdateDocument, current_user:
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
-def get_document(document_id: str, current_user: dict = Depends(get_current_user)):
+async def get_document(document_id: str, current_user: dict = Depends(get_current_user)):
     service = DocumentService(DocumentRepository(db))
     try:
-        document = service.get_document(document_id, str(current_user["_id"]))
+        document = await service.get_document(document_id, str(current_user["_id"]))
         return _document_response(document)
     except DocumentNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -76,10 +76,10 @@ def get_document(document_id: str, current_user: dict = Depends(get_current_user
 
 
 @router.get("/{document_id}/history", response_model=List[HistoryResponse])
-def get_document_history(document_id: str, current_user: dict = Depends(get_current_user)):
+async def get_document_history(document_id: str, current_user: dict = Depends(get_current_user)):
     service = DocumentService(DocumentRepository(db))
     try:
-        return service.get_document_history(document_id, str(current_user["_id"]))
+        return await service.get_document_history(document_id, str(current_user["_id"]))
     except DocumentNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except DocumentInvalidIdError as e:
@@ -87,14 +87,14 @@ def get_document_history(document_id: str, current_user: dict = Depends(get_curr
 
 
 @router.post("/{document_id}/rollback", response_model=DocumentResponse)
-def rollback_document(
+async def rollback_document(
     document_id: str,
     version_number: int = Query(..., ge=1),
     current_user: dict = Depends(get_current_user),
 ):
     service = DocumentService(DocumentRepository(db))
     try:
-        document = service.rollback_document(document_id, version_number, str(current_user["_id"]))
+        document = await service.rollback_document(document_id, version_number, str(current_user["_id"]))
         return _document_response(document)
     except (DocumentNotFoundError, DocumentVersionNotFoundError) as e:
         raise HTTPException(status_code=404, detail=str(e))
